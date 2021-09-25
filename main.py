@@ -1,8 +1,6 @@
 import discord
 from discord import activity
 from discord.ext import commands
-
-import os
 import json
 
 # import all of the cogs

@@ -1,11 +1,14 @@
 import discord
+import json
+from discord.ext.commands import *
 from discord.ext import commands
-
+from discord import *
 from youtube_dl import YoutubeDL
 
 class music_cog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, activity):
         self.bot = bot
+        self.activity = activity
     
         #all the music related stuff
         self.is_playing = False
@@ -27,18 +30,23 @@ class music_cog(commands.Cog):
 
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
-    def play_next(self):
+    async def play_next(self):
         if len(self.music_queue) > 0:
             self.is_playing = True
 
             #get the first url
             m_url = self.music_queue[0][0]['source']
+            m_title = self.music_queue[0][0]['title']
+            self.activity = discord.Activity(type=discord.ActivityType.listening, name=m_title)
+            await self.bot.change_presence(activity=self.activity)
 
             #remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
+            self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
+            await self.bot.change_presence(activity=self.activity)
             self.is_playing = False
 
     # infinite loop checking 
@@ -47,7 +55,9 @@ class music_cog(commands.Cog):
             self.is_playing = True
 
             m_url = self.music_queue[0][0]['source']
-            
+            m_title = self.music_queue[0][0]['title']
+            self.activity = discord.Activity(type=discord.ActivityType.listening, name=m_title)
+            await self.bot.change_presence(activity=self.activity)
             #try to connect to voice channel if you are not already connected
 
             if self.vc == "" or not self.vc.is_connected() or self.vc == None:
@@ -55,38 +65,47 @@ class music_cog(commands.Cog):
             else:
                 await self.vc.move_to(self.music_queue[0][1])
             
-            print(self.music_queue)
+            # print(self.music_queue)
             #remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
+            self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
+            await self.bot.change_presence(activity=self.activity)
             self.is_playing = False
 
-    @commands.command(name="play", help="Plays a selected song from youtube")
+    @commands.command(name="play", aliases=["p"], help="Plays a selected song from youtube")
     async def p(self, ctx, *args):
         query = " ".join(args)
         
         voice_channel = ctx.author.voice.channel
         if voice_channel is None:
             #you need to be connected so that the bot knows where to go
-            await ctx.send("Connect to a voice channel!")
+            await ctx.send(f"{ctx.author.mention} Connect to a voice channel!")
         else:
             song = self.search_yt(query)
             if type(song) == type(True):
-                await ctx.send("Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
+                await ctx.send(f"{ctx.author.mention} Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
             else:
-                await ctx.send("Song added to the queue")
                 self.music_queue.append([song, voice_channel])
+                if(len(self.music_queue) > 0 and self.is_playing == True):
+                    await ctx.send("Song added to the queue")
                 
                 if self.is_playing == False:
+                    json_dump = (str)((self.music_queue[0][0])).split(",")
+                    title = (json_dump[1].replace("'title': '", "")).replace("'}", "")
+                    await ctx.send(f"Now playing -> **{title}**")
+                    self.activity = discord.Activity(type=discord.ActivityType.listening, name=title)
+                    await self.bot.change_presence(activity=self.activity)
                     await self.play_music()
 
-    @commands.command(name="queue", help="Displays the current songs in queue")
+
+    @commands.command(name="queue", aliases=["q"], help="Displays the current songs in queue")
     async def q(self, ctx):
         retval = ""
         for i in range(0, len(self.music_queue)):
-            retval += self.music_queue[i][0]['title'] + "\n"
+            retval += f"{i+1}) {self.music_queue[i][0]['title']} \n"
 
         print(retval)
         if retval != "":
@@ -94,9 +113,27 @@ class music_cog(commands.Cog):
         else:
             await ctx.send("No music in queue")
 
-    @commands.command(name="skip", help="Skips the current song being played")
+    @commands.command(name="skip", aliases=["s"], help="Skips the current song being played")
     async def skip(self, ctx):
         if self.vc != "" and self.vc:
             self.vc.stop()
             #try to play next in the queue if it exists
-            await self.play_music()
+            if len(self.music_queue) > 0:
+                m_title = self.music_queue[0][0]['title']
+                self.activity = discord.Activity(type=discord.ActivityType.listening, name=m_title)
+                await self.bot.change_presence(activity=self.activity)
+                await ctx.send(f"Now playing -> **{m_title}**")
+                await self.play_music()
+            else:
+                self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
+                await self.bot.change_presence(activity=self.activity)
+                await ctx.send(f"No more music to play")
+    
+    @commands.command("disconnect", aliases=["dc"], help="Disconnects bot from voice channel")
+    async def disconnect(self, ctx):
+        self.music_queue.clear
+        self.is_playing = False
+        server = ctx.message.guild.voice_client
+        self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
+        await self.bot.change_presence(activity=self.activity)
+        await server.disconnect()

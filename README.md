@@ -14,5 +14,8 @@ This bot is simple music bot for discord
 Responsible for handling all the discord API stuff
 
 # need to install the following libraries
-pip install discord.py[voice]
-pip install youtube_dl
+* pip install discord.py[voice]
+* pip install youtube_dl
+ ```python
+  python -m pip install -d requirements.txt
+  ```

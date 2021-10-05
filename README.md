@@ -14,7 +14,7 @@ This bot is simple music bot for discord
 - disconnect (dc) - disconnects the bot from voice channel
 ---
  
-#### bot.py
+#### main.py
 * Responsible for handling all the discord API stuff
 ---
  
@@ -25,3 +25,7 @@ This bot is simple music bot for discord
  ```python
   python -m pip install -d requirements.txt
   ```
+* then run the bot
+```python
+ python main.py
+```

@@ -101,7 +101,7 @@ class music_cog(commands.Cog):
 
 
     @commands.command(name="queue", aliases=["q"], help="Displays the current songs in queue")
-    async def q(self, ctx):
+    async def queue(self, ctx):
         retval = ""
         for i in range(0, len(self.music_queue)):
             retval += f"{i+1}) {self.music_queue[i][0]['title']} \n"
@@ -124,13 +124,14 @@ class music_cog(commands.Cog):
                 await ctx.send(f"Now playing -> **{m_title}**")
                 await self.play_music()
             else:
+                self.music_queue = []
                 self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
                 await self.bot.change_presence(activity=self.activity)
                 await ctx.send(f"No more music to play")
     
     @commands.command("disconnect", aliases=["dc"], help="Disconnects bot from voice channel")
     async def disconnect(self, ctx):
-        self.music_queue.clear
+        self.music_queue = []
         self.is_playing = False
         server = ctx.message.guild.voice_client
         self.activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")

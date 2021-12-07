@@ -9,7 +9,7 @@ from main_cog import main_cog
 from music_cog import music_cog
 from urllib.request import urlopen
 
-main = json.load(urlopen("http://10.25.0.2/config/demon/tokens.json"))
+main = json.load(urlopen("http://10.25.1.2/config/demon/tokens.json"))
 
 activity = discord.Activity(type=discord.ActivityType.watching, name="d!help")
 
